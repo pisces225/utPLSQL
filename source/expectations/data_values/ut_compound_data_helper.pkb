@@ -205,22 +205,22 @@ create or replace package body ut_compound_data_helper is
   function generate_select_stmt(a_data_info ut_cursor_column, a_alias varchar2 := 'ucd.')
   return varchar2
   is
-    l_alias varchar2(10) := a_alias;
+    c_alias constant varchar2(10) := a_alias;
     l_col_syntax varchar2(4000);
-    l_ut_owner varchar2(250) := ut_utils.ut_owner;
+    c_ut_owner constant varchar2(250) := sys.dbms_assert.enquote_name(ut_utils.ut_owner);
   begin    
     if a_data_info.is_sql_diffable = 0 then 
-      l_col_syntax :=  l_ut_owner ||'.ut_compound_data_helper.get_hash('||l_alias||a_data_info.transformed_name||'.getClobVal()) as '||a_data_info.transformed_name ;
+      l_col_syntax :=  c_ut_owner ||'.ut_compound_data_helper.get_hash('||c_alias||a_data_info.transformed_name||'.getClobVal()) as '||a_data_info.transformed_name ;
     elsif a_data_info.is_sql_diffable = 1  and a_data_info.column_type = 'DATE' then
-      l_col_syntax :=  'to_date('||l_alias||a_data_info.transformed_name||') as '|| a_data_info.transformed_name;
+      l_col_syntax :=  'to_date('||c_alias||a_data_info.transformed_name||') as '|| a_data_info.transformed_name;
     elsif  a_data_info.is_sql_diffable = 1  and a_data_info.column_type in ('TIMESTAMP') then
-      l_col_syntax :=  'to_timestamp('||l_alias||a_data_info.transformed_name||','''||ut_utils.gc_timestamp_format||''') as '|| a_data_info.transformed_name;
+      l_col_syntax :=  'to_timestamp('||c_alias||a_data_info.transformed_name||','''||ut_utils.gc_timestamp_format||''') as '|| a_data_info.transformed_name;
     elsif a_data_info.is_sql_diffable = 1  and a_data_info.column_type in ('TIMESTAMP WITH TIME ZONE') then
-      l_col_syntax :=  'to_timestamp_tz('||l_alias||a_data_info.transformed_name||','''||ut_utils.gc_timestamp_tz_format||''') as '|| a_data_info.transformed_name;
+      l_col_syntax :=  'to_timestamp_tz('||c_alias||a_data_info.transformed_name||','''||ut_utils.gc_timestamp_tz_format||''') as '|| a_data_info.transformed_name;
     elsif a_data_info.is_sql_diffable = 1  and a_data_info.column_type in ('TIMESTAMP WITH LOCAL TIME ZONE') then
-      l_col_syntax :=  ' cast( to_timestamp_tz('||l_alias||a_data_info.transformed_name||','''||ut_utils.gc_timestamp_tz_format||''') AS TIMESTAMP WITH LOCAL TIME ZONE) as '|| a_data_info.transformed_name;
+      l_col_syntax :=  ' cast( to_timestamp_tz('||c_alias||a_data_info.transformed_name||','''||ut_utils.gc_timestamp_tz_format||''') AS TIMESTAMP WITH LOCAL TIME ZONE) as '|| a_data_info.transformed_name;
     else
-      l_col_syntax :=  l_alias||a_data_info.transformed_name||' as '|| a_data_info.transformed_name;
+      l_col_syntax :=  c_alias||a_data_info.transformed_name||' as '|| a_data_info.transformed_name;
     end if;       
     return l_col_syntax;
   end;
@@ -334,7 +334,6 @@ create or replace package body ut_compound_data_helper is
     l_join_on_stmt   clob;
     l_not_equal_stmt clob;
     l_where_stmt     clob;
-    l_ut_owner       varchar2(250) := ut_utils.ut_owner;
      
     function get_join_type(a_inclusion_compare in boolean,a_negated in boolean) return varchar2 is
     begin
@@ -368,7 +367,7 @@ create or replace package body ut_compound_data_helper is
       
     l_compare_sql := replace(l_compare_sql,'{:duplicate_number:}',l_partition_stmt);
     l_compare_sql := replace(l_compare_sql,'{:columns:}',l_select_stmt);
-    l_compare_sql := replace(l_compare_sql,'{:ut3_owner:}',l_ut_owner);
+    l_compare_sql := replace(l_compare_sql,'{:ut3_owner:}',sys.dbms_assert.enquote_name(ut_utils.ut_owner));
     l_compare_sql := replace(l_compare_sql,'{:xml_to_columns:}',l_xmltable_stmt); 
     l_compare_sql := replace(l_compare_sql,'{:item_no:}',get_item_no(a_unordered));
     l_compare_sql := replace(l_compare_sql,'{:join_type:}',get_join_type(a_inclusion_type,a_is_negated));

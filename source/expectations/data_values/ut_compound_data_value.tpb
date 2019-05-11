@@ -47,7 +47,7 @@ create or replace type body ut_compound_data_value as
       --return first c_max_rows rows
       execute immediate '
           select xmlserialize( content ucd.item_data no indent)
-            from '|| ut_utils.ut_owner ||q'[.ut_compound_data_tmp tmp
+            from '|| sys.dbms_assert.enquote_name(ut_utils.ut_owner) ||q'[.ut_compound_data_tmp tmp
             ,xmltable ( '/ROWSET' passing tmp.item_data
             columns item_data xmltype PATH '*'         
             ) ucd

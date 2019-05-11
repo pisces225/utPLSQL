@@ -16,13 +16,6 @@ create or replace package body ut_coverage_helper_block is
   limitations under the License.
   */
 
-  type t_proftab_row is record (
-      line  binary_integer,
-      calls number(38,0)
-    );
-    
-  type t_proftab_rows is table of t_proftab_row;
-
   type t_block_row is record(
        line           binary_integer
       ,blocks         binary_integer
@@ -51,7 +44,6 @@ create or replace package body ut_coverage_helper_block is
   function block_results(a_object_owner varchar2, a_object_name varchar2, a_coverage_id integer) return t_block_rows is
     l_raw_coverage  sys_refcursor;
     l_coverage_rows t_block_rows;
-    l_ut3_owner     varchar2(128) := ut_utils.ut_owner();
   begin
           
     open l_raw_coverage for 'select ccb.line

@@ -547,7 +547,7 @@ create or replace package body ut_utils is
 
   function ut_owner return varchar2 is
   begin
-    return SYS.DBMS_ASSERT.ENQUOTE_NAME(sys_context('userenv','current_schema'));
+    return sys_context('userenv','current_schema');
   end;
 
   function scale_cardinality(a_cardinality natural) return natural is

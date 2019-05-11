@@ -331,17 +331,17 @@ create or replace package body ut_suite_manager is
 
   function get_missing_objects(a_object_owner varchar2) return ut_varchar2_rows is
     l_rows         sys_refcursor;
-    l_ut_owner     varchar2(250) := ut_utils.ut_owner;
-    l_objects_view varchar2(200) := ut_metadata.get_objects_view_name();
+    c_ut_owner     constant varchar2(250) := sys.dbms_assert.enquote_name(ut_utils.ut_owner);
+    c_objects_view constant varchar2(200) := ut_metadata.get_objects_view_name();
     l_cursor_text  varchar2(32767);
     l_result       ut_varchar2_rows;
   begin
     l_cursor_text :=
       q'[select i.object_name
-         from ]'||l_ut_owner||q'[.ut_suite_cache_package i
+         from ]'||c_ut_owner||q'[.ut_suite_cache_package i
          where
            not exists (
-              select 1  from ]'||l_objects_view||q'[ o
+              select 1  from ]'||c_objects_view||q'[ o
                where o.owner = i.object_owner
                  and o.object_name = i.object_name
                  and o.object_type = 'PACKAGE'
@@ -364,14 +364,14 @@ create or replace package body ut_suite_manager is
   ) return t_cached_suites_cursor is
     l_path     varchar2( 4000 );
     l_result   sys_refcursor;
-    l_ut_owner varchar2(250) := ut_utils.ut_owner;
+    c_ut_owner constant varchar2(250) := sys.dbms_assert.enquote_name(ut_utils.ut_owner);
     c integer;
     i integer;
     l_sql varchar2(32767);
   begin
     if a_path is null and a_object_name is not null then
       execute immediate 'select min(path)
-      from '||l_ut_owner||q'[.ut_suite_cache
+      from '||c_ut_owner||q'[.ut_suite_cache
      where object_owner = :a_object_owner
            and object_name = :a_object_name
            and name = nvl(:a_procedure_name, name)]'
@@ -383,7 +383,7 @@ create or replace package body ut_suite_manager is
     l_sql := q'[with
       suite_items as (
         select /*+ cardinality(c 100) */ c.*
-          from ]'||l_ut_owner||q'[.ut_suite_cache c
+          from ]'||c_ut_owner||q'[.ut_suite_cache c
          where 1 = 1 ]'||case when not a_skip_all_objects then q'[
                and exists
                    ( select 1
@@ -430,9 +430,9 @@ create or replace package body ut_suite_manager is
       logical_suite_data as (
         select 'UT_LOGICAL_SUITE' as self_type, p.path, p.object_owner,
                upper( substr(p.path, instr( p.path, '.', -1 ) + 1 ) ) as object_name,
-               cast(null as ]'||l_ut_owner||q'[.ut_executables) as x,
-               cast(null as ]'||l_ut_owner||q'[.ut_integer_list) as y,
-               cast(null as ]'||l_ut_owner||q'[.ut_executable_test) as z
+               cast(null as ]'||c_ut_owner||q'[.ut_executables) as x,
+               cast(null as ]'||c_ut_owner||q'[.ut_integer_list) as y,
+               cast(null as ]'||c_ut_owner||q'[.ut_executable_test) as z
           from suitepath_part p
          where p.path
            not in (select s.path from suitepaths s)
@@ -441,7 +441,7 @@ create or replace package body ut_suite_manager is
         select to_number(null) as id, s.self_type, s.path, s.object_owner, s.object_name,
                s.object_name as name, null as line_no, null as parse_time,
                null as description, null as rollback_type, 0 as disabled_flag,
-               ]'||l_ut_owner||q'[.ut_varchar2_rows() as warnings,
+               ]'||c_ut_owner||q'[.ut_varchar2_rows() as warnings,
                s.x as before_all_list, s.x as after_all_list,
                s.x as before_each_list, s.x as before_test_list,
                s.x as after_each_list, s.x as after_test_list,
@@ -469,7 +469,7 @@ create or replace package body ut_suite_manager is
               c.line_no,
               :a_random_seed]'
             else
-              l_ut_owner||'.ut_annotation_manager.hash_suite_path(
+              c_ut_owner||'.ut_annotation_manager.hash_suite_path(
                 c.path, :a_random_seed
               ) desc nulls last'
           end;
@@ -555,7 +555,7 @@ create or replace package body ut_suite_manager is
       open l_annotations_cursor for
       q'[select value(x)
       from table(
-        ]' || ut_utils.ut_owner || q'[.ut_annotation_manager.get_annotated_objects(
+        ]' || sys.dbms_assert.enquote_name(ut_utils.ut_owner) || q'[.ut_annotation_manager.get_annotated_objects(
               :a_owner_name, 'PACKAGE', :a_suite_cache_parse_time
             )
           )x ]'
@@ -629,7 +629,7 @@ create or replace package body ut_suite_manager is
     l_results      ut_object_names := ut_object_names( );
     l_schema_names ut_varchar2_rows;
     l_object_names ut_varchar2_rows;
-    l_ut_owner     varchar2(250) := ut_utils.ut_owner;
+    c_ut_owner     constant varchar2(250) := sys.dbms_assert.enquote_name(ut_utils.ut_owner);
     l_need_all_objects_scan boolean := true;
   begin
     -- if current user is the onwer or current user has execute any procedure privilege
@@ -645,7 +645,7 @@ create or replace package body ut_suite_manager is
     end loop;
 
     execute immediate 'select c.object_owner, c.object_name
-      from '||l_ut_owner||q'[.ut_suite_cache_package c
+      from '||c_ut_owner||q'[.ut_suite_cache_package c
            join table ( :a_schema_names ) s
              on c.object_owner = upper(s.column_value)]'
       || case when l_need_all_objects_scan then q'[
@@ -736,7 +736,7 @@ create or replace package body ut_suite_manager is
     a_package_name   varchar2 := null
   ) return sys_refcursor is
     l_result      sys_refcursor;
-    l_ut_owner    varchar2(250) := ut_utils.ut_owner;
+    c_ut_owner    constant varchar2(250) := sys.dbms_assert.enquote_name(ut_utils.ut_owner);
     l_sql varchar2(32767);
     c integer;
     i integer;
@@ -747,7 +747,7 @@ create or replace package body ut_suite_manager is
     l_sql := q'[with
       suite_items as (
         select /*+ cardinality(c 100) */ c.*
-          from ]'||l_ut_owner||q'[.ut_suite_cache c
+          from ]'||c_ut_owner||q'[.ut_suite_cache c
          where 1 = 1 ]'||case when can_skip_all_objects_scan(a_owner_name) then q'[
                and exists
                    ( select 1
@@ -803,7 +803,7 @@ create or replace package body ut_suite_manager is
                s.path,  0 as disabled_flag
           from logical_suites s
       )
-    select ]'||l_ut_owner||q'[.ut_suite_item_info(
+    select ]'||c_ut_owner||q'[.ut_suite_item_info(
              object_owner, object_name, item_name, item_description,
              item_type, item_line_no, path, disabled_flag
            )
@@ -833,7 +833,7 @@ create or replace package body ut_suite_manager is
     a_item_type      varchar2 := null
   ) return boolean is
     l_result    integer;
-    l_ut_owner  varchar2(250) := ut_utils.ut_owner;
+    c_ut_owner  constant varchar2(250) := sys.dbms_assert.enquote_name(ut_utils.ut_owner);
   begin
     refresh_cache(a_owner_name);
 
@@ -841,7 +841,7 @@ create or replace package body ut_suite_manager is
       select count(1) from dual
        where exists (
                 select 1
-                  from ]'||l_ut_owner||q'[.ut_suite_cache c
+                  from ]'||c_ut_owner||q'[.ut_suite_cache c
                  where 1 = 1 ]'||case when can_skip_all_objects_scan(a_owner_name) then q'[
                        and exists
                            ( select 1

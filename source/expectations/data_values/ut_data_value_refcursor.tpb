@@ -29,7 +29,7 @@ create or replace type body ut_data_value_refcursor as
     l_cursor     sys_refcursor := a_value;
     l_ctx        number;
     l_xml        xmltype;
-    l_ut_owner   varchar2(250) := ut_utils.ut_owner;
+    c_ut_owner   constant varchar2(250) := sys.dbms_assert.enquote_name(ut_utils.ut_owner);
     l_set_id     integer := 0;
     l_elements_count number := 0;
   begin
@@ -59,7 +59,7 @@ create or replace type body ut_data_value_refcursor as
       $end
       l_elements_count := l_elements_count + dbms_xmlgen.getNumRowsProcessed(l_ctx);
       execute immediate
-      'insert into ' || l_ut_owner || '.ut_compound_data_tmp(data_id, item_no, item_data) ' ||
+      'insert into ' || c_ut_owner || '.ut_compound_data_tmp(data_id, item_no, item_data) ' ||
       'values (:self_guid, :self_row_count, :l_xml)'
       using in self.data_id, l_set_id, l_xml;       
       l_set_id := l_set_id + c_bulk_rows;   
@@ -148,7 +148,7 @@ create or replace type body ut_data_value_refcursor as
     l_act_missing_pk    ut_varchar2_list := ut_varchar2_list();
     l_exp_missing_pk    ut_varchar2_list := ut_varchar2_list();
 
-    c_max_rows          integer := ut_utils.gc_diff_max_rows;
+    c_max_rows          constant integer := ut_utils.gc_diff_max_rows;
     l_diff_id           ut_compound_data_helper.t_hash;
     l_diff_row_count    integer;
     l_row_diffs         ut_compound_data_helper.tt_row_diffs;

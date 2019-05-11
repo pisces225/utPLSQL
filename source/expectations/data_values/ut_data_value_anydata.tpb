@@ -61,8 +61,6 @@ create or replace type body ut_data_value_anydata as
  
   member procedure init(self in out nocopy ut_data_value_anydata, a_value anydata) is
     l_refcursor    sys_refcursor;
-    l_ctx      number;
-    l_ut_owner varchar2(250) := ut_utils.ut_owner;
     cursor_not_open exception;
     l_cursor_number number;
     l_anydata_sql varchar2(32767);

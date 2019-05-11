@@ -21,22 +21,22 @@ create or replace package body ut_annotation_manager as
 
   function get_missing_objects(a_object_owner varchar2, a_object_type varchar2) return ut_annotation_objs_cache_info is
     l_rows         sys_refcursor;
-    l_ut_owner     varchar2(250) := ut_utils.ut_owner;
-    l_objects_view varchar2(200) := ut_metadata.get_objects_view_name();
+    c_ut_owner     constant varchar2(250) := sys.dbms_assert.enquote_name(ut_utils.ut_owner);
+    c_objects_view constant varchar2(200) := ut_metadata.get_objects_view_name();
     l_cursor_text  varchar2(32767);
     l_result       ut_annotation_objs_cache_info;
   begin
     l_cursor_text :=
-      q'[select ]'||l_ut_owner||q'[.ut_annotation_obj_cache_info(
+      q'[select ]'||c_ut_owner||q'[.ut_annotation_obj_cache_info(
                     object_owner => i.object_owner,
                     object_name => i.object_name,
                     object_type => i.object_type,
                     needs_refresh => null
                   )
-           from ]'||l_ut_owner||q'[.ut_annotation_cache_info i
+           from ]'||c_ut_owner||q'[.ut_annotation_cache_info i
            where
              not exists (
-                select 1  from ]'||l_objects_view||q'[ o
+                select 1  from ]'||c_objects_view||q'[ o
                  where o.owner = i.object_owner
                    and o.object_name = i.object_name
                    and o.object_type = i.object_type
@@ -53,20 +53,20 @@ create or replace package body ut_annotation_manager as
 
   function get_annotation_objs_info(a_object_owner varchar2, a_object_type varchar2, a_parse_date timestamp := null) return ut_annotation_objs_cache_info is
     l_rows         sys_refcursor;
-    l_ut_owner     varchar2(250) := ut_utils.ut_owner;
-    l_objects_view varchar2(200) := ut_metadata.get_objects_view_name();
+    c_ut_owner     constant varchar2(250) := sys.dbms_assert.enquote_name(ut_utils.ut_owner);
+    c_objects_view constant varchar2(200) := ut_metadata.get_objects_view_name();
     l_cursor_text  varchar2(32767);
     l_result       ut_annotation_objs_cache_info;
   begin
     l_cursor_text :=
-      q'[select ]'||l_ut_owner||q'[.ut_annotation_obj_cache_info(
+      q'[select ]'||c_ut_owner||q'[.ut_annotation_obj_cache_info(
                     object_owner => o.owner,
                     object_name => o.object_name,
                     object_type => o.object_type,
                     needs_refresh => case when o.last_ddl_time < cast(i.parse_time as date) then 'N' else 'Y' end
                   )
-           from ]'||l_objects_view||q'[ o
-           left join ]'||l_ut_owner||q'[.ut_annotation_cache_info i
+           from ]'||c_objects_view||q'[ o
+           left join ]'||c_ut_owner||q'[.ut_annotation_cache_info i
              on o.owner = i.object_owner
             and o.object_name = i.object_name
             and o.object_type = i.object_type
@@ -86,7 +86,7 @@ create or replace package body ut_annotation_manager as
 
   function get_sources_to_annotate(a_object_owner varchar2, a_object_type varchar2) return sys_refcursor is
     l_result       sys_refcursor;
-    l_sources_view varchar2(200) := ut_metadata.get_source_view_name();
+    c_sources_view constant varchar2(200) := ut_metadata.get_source_view_name();
   begin
     open l_result for
      q'[select s.name, s.text
@@ -96,7 +96,7 @@ create or replace package body ut_annotation_manager as
                            then 'Y' else 'N' end
                           )
                          over(partition by s.name) is_annotated
-                  from ]'||l_sources_view||q'[ s
+                  from ]'||c_sources_view||q'[ s
                  where s.type = :a_object_type
                    and s.owner = :a_object_owner
                ) s
@@ -109,7 +109,7 @@ create or replace package body ut_annotation_manager as
 
   function get_sources_to_annotate(a_object_owner varchar2, a_object_type varchar2, a_objects_to_refresh ut_annotation_objs_cache_info) return sys_refcursor is
     l_result       sys_refcursor;
-    l_sources_view varchar2(200) := ut_metadata.get_source_view_name();
+    c_sources_view constant varchar2(200) := ut_metadata.get_source_view_name();
     l_card         natural;
   begin
     l_card := ut_utils.scale_cardinality(cardinality(a_objects_to_refresh));
@@ -123,7 +123,7 @@ create or replace package body ut_annotation_manager as
                           )
                          over(partition by s.name) is_annotated
                   from table(:a_objects_to_refresh) r
-                  join ]'||l_sources_view||q'[ s
+                  join ]'||c_sources_view||q'[ s
                     on s.name = r.object_name
                    and s.owner = r.object_owner
                    and s.type = r.object_type
@@ -148,7 +148,7 @@ create or replace package body ut_annotation_manager as
     l_names               dbms_preprocessor.source_lines_t;
     l_name                varchar2(250);
     l_object_lines        dbms_preprocessor.source_lines_t;
-    l_parse_time          date := sysdate;
+    c_parse_time          constant date := sysdate;
     pragma autonomous_transaction;
   begin
     loop
@@ -157,7 +157,7 @@ create or replace package body ut_annotation_manager as
         if l_names(i) != l_name then
           l_annotations := ut_annotation_parser.parse_object_annotations(l_object_lines);
           ut_annotation_cache_manager.update_cache(
-            ut_annotated_object(a_object_owner, l_name, a_object_type, l_parse_time, l_annotations)
+            ut_annotated_object(a_object_owner, l_name, a_object_type, c_parse_time, l_annotations)
           );
           l_object_lines.delete;
         end if;
@@ -171,7 +171,7 @@ create or replace package body ut_annotation_manager as
     if a_sources_cursor%rowcount > 0 then
       l_annotations := ut_annotation_parser.parse_object_annotations(l_object_lines);
       ut_annotation_cache_manager.update_cache(
-        ut_annotated_object(a_object_owner, l_name, a_object_type, l_parse_time, l_annotations)
+        ut_annotated_object(a_object_owner, l_name, a_object_type, c_parse_time, l_annotations)
       );
       l_object_lines.delete;
     end if;
