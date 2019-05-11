@@ -347,7 +347,7 @@ create or replace package body ut_suite_manager is
                  and o.object_type = 'PACKAGE'
                  and o.owner = :owner
               )
-          and i.object_owner = :owner']';
+          and i.object_owner = :owner]';
     open l_rows for l_cursor_text using a_object_owner, a_object_owner;
     fetch l_rows bulk collect into l_result limit 1000000;
     close l_rows;
