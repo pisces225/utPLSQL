@@ -345,10 +345,10 @@ create or replace package body ut_suite_manager is
                where o.owner = i.object_owner
                  and o.object_name = i.object_name
                  and o.object_type = 'PACKAGE'
-                 and o.owner = ']'||a_object_owner||q'['
+                 and o.owner = :owner
               )
-          and i.object_owner = ']'||a_object_owner||q'[']';
-    open l_rows for l_cursor_text;
+          and i.object_owner = :owner']';
+    open l_rows for l_cursor_text using a_object_owner, a_object_owner;
     fetch l_rows bulk collect into l_result limit 1000000;
     close l_rows;
     return l_result;
@@ -365,6 +365,9 @@ create or replace package body ut_suite_manager is
     l_path     varchar2( 4000 );
     l_result   sys_refcursor;
     l_ut_owner varchar2(250) := ut_utils.ut_owner;
+    c integer;
+    i integer;
+    l_sql varchar2(32767);
   begin
     if a_path is null and a_object_name is not null then
       execute immediate 'select min(path)
@@ -376,9 +379,8 @@ create or replace package body ut_suite_manager is
     else
       l_path := lower( a_path );
     end if;
-
-    open l_result for
-    q'[with
+    
+    l_sql := q'[with
       suite_items as (
         select /*+ cardinality(c 100) */ c.*
           from ]'||l_ut_owner||q'[.ut_suite_cache c
@@ -387,11 +389,11 @@ create or replace package body ut_suite_manager is
                    ( select 1
                        from all_objects a
                       where a.object_name = c.object_name
-                        and a.owner       = ']'||upper(a_object_owner)||q'['
+                        and a.owner       = :a_object_name
                         and a.owner       = c.object_owner
                         and a.object_type = 'PACKAGE'
                    )]' end ||q'[
-               and c.object_owner = ']'||upper(a_object_owner)||q'['
+               and c.object_owner = :a_object_name
                and ( ]' || case when l_path is not null then q'[
                       :l_path||'.' like c.path || '.%' /*all children and self*/
                      or ( c.path||'.' like :l_path || '.%'  --all parents
@@ -470,9 +472,25 @@ create or replace package body ut_suite_manager is
               l_ut_owner||'.ut_annotation_manager.hash_suite_path(
                 c.path, :a_random_seed
               ) desc nulls last'
-          end
-    using l_path, l_path, upper(a_object_name), upper(a_procedure_name), a_random_seed;
-    return l_result;
+          end;
+
+
+    c := dbms_sql.open_cursor;
+    begin
+      dbms_sql.parse(c, l_sql, dbms_sql.native);
+      dbms_sql.bind_variable(c, 'l_path', l_path);
+      dbms_sql.bind_variable(c, 'a_object_name', upper(a_object_name));
+      dbms_sql.bind_variable(c, 'a_procedure_name', upper(a_procedure_name));
+      dbms_sql.bind_variable(c, 'a_random_seed', a_random_seed);
+      i := dbms_sql.execute(c);
+      l_result := dbms_sql.to_refcursor(c);
+    exception when others then
+      if dbms_sql.is_open(c) then
+        dbms_sql.close_cursor(c);
+      end if;
+      raise;
+    end;
+    return l_result;    
   end;
 
   function can_skip_all_objects_scan(
@@ -719,12 +737,14 @@ create or replace package body ut_suite_manager is
   ) return sys_refcursor is
     l_result      sys_refcursor;
     l_ut_owner    varchar2(250) := ut_utils.ut_owner;
+    l_sql varchar2(32767);
+    c integer;
+    i integer;
   begin
 
     refresh_cache(a_owner_name);
     
-    open l_result for
-    q'[with
+    l_sql := q'[with
       suite_items as (
         select /*+ cardinality(c 100) */ c.*
           from ]'||l_ut_owner||q'[.ut_suite_cache c
@@ -733,11 +753,11 @@ create or replace package body ut_suite_manager is
                    ( select 1
                        from all_objects a
                       where a.object_name = c.object_name
-                        and a.owner       = ']'||upper(a_owner_name)||q'['
+                        and a.owner       = :a_owner_name
                         and a.owner       = c.object_owner
                         and a.object_type = 'PACKAGE'
                    )]' end ||q'[
-               and c.object_owner = ']'||upper(a_owner_name) ||q'['
+               and c.object_owner = :a_owner_name
                and ]'
                || case when a_package_name is not null
                   then 'c.object_name = :a_package_name'
@@ -787,7 +807,21 @@ create or replace package body ut_suite_manager is
              object_owner, object_name, item_name, item_description,
              item_type, item_line_no, path, disabled_flag
            )
-      from items c]' using upper(a_package_name);
+      from items c]';
+
+    c := dbms_sql.open_cursor();
+    begin
+      dbms_sql.parse(c, l_sql, dbms_sql.native);
+      dbms_sql.bind_variable(c, 'a_package_name',upper(a_package_name));
+      dbms_sql.bind_variable(c, 'a_owner_name', upper(a_owner_name));
+      l_result := dbms_sql.to_refcursor(c);
+    exception 
+      when others then
+        if dbms_sql.is_open(c) then
+          dbms_sql.close_cursor(c);
+        end if;
+        raise;
+    end;
 
     return l_result;
   end;

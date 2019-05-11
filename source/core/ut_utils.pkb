@@ -547,7 +547,7 @@ create or replace package body ut_utils is
 
   function ut_owner return varchar2 is
   begin
-    return sys_context('userenv','current_schema');
+    return SYS.DBMS_ASSERT.ENQUOTE_NAME(sys_context('userenv','current_schema'));
   end;
 
   function scale_cardinality(a_cardinality natural) return natural is
@@ -797,6 +797,15 @@ create or replace package body ut_utils is
     end if;
     return l_valid_name;
   end;
+  
+  function binary_string(a_str nvarchar2) return varchar2 is
+  begin
+    return nlssort(a_str,'NLS_SORT = BINARY');
+  end binary_string;
+  function binary_string(a_str varchar2) return varchar2 is
+  begin
+    return nlssort(a_str,'NLS_SORT = BINARY');
+  end binary_string;  
 
 end ut_utils;
 /

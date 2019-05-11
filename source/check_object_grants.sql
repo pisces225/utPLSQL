@@ -7,6 +7,7 @@ declare
   l_missing_grants varchar2(4000);
   l_target_table   varchar2(128);
   l_owner_column   varchar2(128);
+  l_owner          varchar2(128) := SYS_CONTEXT('userenv','current_schema');
 
   function get_view(a_dba_view_name varchar2) return varchar2 is
     l_invalid_object_name exception;
@@ -31,13 +32,13 @@ begin
    minus
   select table_name as object_name
     from ]'||l_target_table||q'[
-   where grantee = SYS_CONTEXT('userenv','current_schema')
+   where grantee = :owner
      and ]'||l_owner_column||q'[ = 'SYS')]'
-  into l_missing_grants using c_expected_grants;
+  into l_missing_grants using c_expected_grants, l_owner;
   if l_missing_grants is not null then
     raise_application_error(
         -20000
-        , 'The following object grants are missing for user "'||SYS_CONTEXT('userenv','current_schema')||'" to install utPLSQL:'||CHR(10)
+        , 'The following object grants are missing for user "'||l_owner||'" to install utPLSQL:'||CHR(10)
           ||l_missing_grants||CHR(10)
           ||'Please read the installation documentation at http://utplsql.org/utPLSQL/'
     );
